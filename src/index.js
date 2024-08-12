@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const pool = require("./database");
+const path = require("path");
 
 const empleadosRouter = require("./routes/empleadoRouter");
 const usuariosRouter = require("./routes/usuarioRouter");
