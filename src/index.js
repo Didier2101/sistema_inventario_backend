@@ -27,6 +27,14 @@ app.use(bodegasRouter);
 app.use(productosRouter);
 app.use(cargosRouter);
 
+// Servir archivos estáticos de React
+app.use(express.static(path.join(__dirname, "build")));
+
+// Ruta catch-all para servir index.html en caso de una ruta desconocida
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "build", "index.html"));
+});
+
 app.listen(port, async () => {
   console.log(`Servidor backend corriendo en http://localhost:${port}`);
 });
