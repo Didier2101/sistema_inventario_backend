@@ -29,11 +29,11 @@ app.use(productosRouter);
 app.use(cargosRouter);
 
 // Servir archivos estáticos de React
-app.use(express.static(path.join(__dirname, "build")));
+app.use(express.static(path.join(__dirname, "dist")));
 
 // Ruta catch-all para servir index.html en caso de una ruta desconocida
 app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "build", "index.html"));
+  res.sendFile(path.join(__dirname, "dist", "index.html"));
 });
 
 app.listen(port, async () => {
