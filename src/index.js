@@ -16,7 +16,7 @@ const port = process.env.PORT || 4000;
 
 app.use(
   cors({
-    origin: "sistema-inventario-frontend-dusky.vercel.app",
+    origin: "https://sistema-inventario-frontend.onrender.com",
   })
 );
 
