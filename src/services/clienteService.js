@@ -22,13 +22,6 @@ const agregarCliente = async (cliente) => {
     if (cedulaExistentes.length > 0) {
       throw new Error("La cédula ya se encuentra registrada");
     }
-    const [correoExistente] = await pool.query(
-      "SELECT * FROM clientes WHERE correo_electronico = ?",
-      [cliente.correo_electronico]
-    );
-    if (correoExistente.length > 0) {
-      throw new Error("El correo electrónico ya se encuentra registrado");
-    }
 
     // Insertar datos del cliente
     const insertarCliente = `INSERT INTO clientes (cedula,nombres,telefono,correo_electronico,direccion)
@@ -43,7 +36,6 @@ const agregarCliente = async (cliente) => {
       cliente.direccion,
     ]);
     await pool.query("COMMIT");
-    console.log("Cliente agregado correctamente:", resultadoClienteInsertado);
   } catch (error) {
     await pool.query("ROLLBACK");
     console.error("Error al agregar el cliente", error);

@@ -4,18 +4,25 @@ const agregarProducto = async (req, res) => {
   try {
     const producto = req.body;
 
+    // Llamar al servicio para agregar el producto
     await productoService.agregarProducto(producto);
+
+    // Respuesta exitosa
     res.status(201).json({ message: "Producto creado exitosamente" });
   } catch (error) {
+    // Manejo de errores basado en el tipo de error
     if (error.code === "REFERENCIA_DUPLICADA") {
-      res.status(400).json({
+      // Error cuando la referencia ya existe
+      return res.status(400).json({
         message: error.message,
-        error: "REGISTRO_DUPLICADO",
+        error: "REGISTRO_DUPLICADO", // Código de error personalizado para el frontend
       });
-    } else {
-      console.error("Error al crear los el producto:", error);
-      res.status(500).json({ message: "Error al crear los productos" });
     }
+
+    // Manejo de errores genéricos
+    res.status(500).json({
+      message: "Error al crear el producto",
+    });
   }
 };
 
@@ -25,8 +32,10 @@ const obtenerTodosProductos = async (req, res) => {
     const productos = await productoService.obtenerTodosProductos();
     res.status(200).json(productos);
   } catch (error) {
-    console.error("Error al obtener los productos:", error);
-    res.status(500).json({ message: "Error al obtener los productos" });
+    res.status(500).json({
+      message: "Error al obtener los productos",
+      error: error.message || "Error desconocido",
+    });
   }
 };
 
@@ -37,20 +46,47 @@ const obtenerProductoPorId = async (req, res) => {
     const producto = await productoService.obtenerProductoPorId(idProducto);
     res.status(200).json(producto);
   } catch (error) {
-    console.error("Error al obtener el producto:", error);
-    res.status(500).json({ message: "Error al obtener el producto" });
+    res.status(500).json({
+      message: "Error al obtener el producto",
+      error: error.message || "Error desconocido",
+    });
   }
 };
 
 // Controlador para eliminar un producto
 const eliminarProducto = async (req, res) => {
   const idProducto = req.params.id_producto;
+
   try {
+    // Verificar si el producto existe
+    const productoExistente = await productoService.obtenerProductoPorId(
+      idProducto
+    );
+    if (!productoExistente) {
+      return res.status(404).json({
+        message: "Producto no encontrado",
+        error: "PRODUCTO_NO_ENCONTRADO", // Error personalizado
+      });
+    }
+
+    // Llamar al servicio para eliminar el producto
     await productoService.eliminarProducto(idProducto);
+
+    // Respuesta exitosa
     res.status(200).json({ message: "Producto eliminado correctamente" });
   } catch (error) {
-    console.error("Error al eliminar el producto:", error);
-    res.status(500).json({ message: "Error al eliminar el producto" });
+    // Manejo de errores personalizados, en caso de ser necesario
+    if (error.code === "PRODUCTO_NO_ENCONTRADO") {
+      return res.status(404).json({
+        message: "Producto no encontrado",
+        error: "PRODUCTO_NO_ENCONTRADO",
+      });
+    }
+
+    // Error genérico para otros problemas
+    res
+      .status(500)
+      .json({ message: "Error al eliminar el producto", error: error.message });
   }
 };
 
@@ -69,44 +105,26 @@ const actualizarProducto = async (req, res) => {
         error: "REGISTRO_DUPLICADO",
       });
     } else {
-      console.error("Error al actualizar el PRODUCTO:", error);
       res.status(500).json({ message: "Error al actualizar el PRODUCTO" });
     }
   }
 };
 
-// Función para actualizar el estado de un producto por su ID
-const actualizarEstadoProducto = async (req, res) => {
-  const idProducto = req.params.id_producto;
-  const { estado } = req.body; // Esperamos recibir el nuevo estado del producto
-
-  try {
-    await productoService.actualizarEstadoProducto(idProducto, estado);
-    res
-      .status(200)
-      .json({ message: "Estado del producto actualizado correctamente" });
-  } catch (error) {
-    console.error("Error al actualizar el estado del producto:", error);
-    res
-      .status(500)
-      .json({ message: "Error al actualizar el estado del producto" });
-  }
-};
-
-// Controlador para actualizar el stock de un producto
-// Controlador para actualizar el stock de un producto
 const actualizarStockProducto = async (req, res) => {
-  const idProducto = req.params.id_producto;
-  const { nuevaCantidad } = req.body;
+  const { id_producto } = req.params;
+  const { nuevaCantidad, operacion } = req.body;
 
   try {
-    await productoService.actualizarStockProducto(idProducto, nuevaCantidad);
+    await productoService.actualizarStockProducto(
+      id_producto,
+      nuevaCantidad,
+      operacion
+    );
     res
       .status(200)
       .json({ message: "Stock del producto actualizado correctamente" });
   } catch (error) {
-    console.error("Error al sumar la cantidad", error);
-    res.status(500).json({ message: "Error al sumar la cantidad" });
+    res.status(500).json({ message: "Error al actualizar la cantidad" });
   }
 };
 
@@ -116,6 +134,5 @@ module.exports = {
   eliminarProducto,
   obtenerProductoPorId,
   actualizarProducto,
-  actualizarEstadoProducto,
   actualizarStockProducto,
 };

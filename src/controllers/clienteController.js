@@ -7,10 +7,7 @@ const crearCliente = async (request, response) => {
     await clienteService.agregarCliente(cliente);
     response.status(201).json({ message: "Cliente creado exitosamente" });
   } catch (error) {
-    if (
-      error.message === "La cédula ya se encuentra registrada" ||
-      error.message === "El correo electrónico ya se encuentra registrado"
-    ) {
+    if (error.message === "El correo electrónico ya se encuentra registrado") {
       response.status(400).json({
         error: "REGISTRO_DUPLICADO",
         message: error.message,

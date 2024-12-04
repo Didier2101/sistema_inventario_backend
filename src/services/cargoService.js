@@ -1,4 +1,5 @@
 const pool = require("../database");
+
 const obtenerCargo = async () => {
   try {
     const query = "SELECT * FROM cargos";

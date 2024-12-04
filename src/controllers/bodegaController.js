@@ -44,7 +44,7 @@ const eliminarBodega = async (req, res) => {
   } catch (error) {
     console.error("Error al eliminar la bodega, ", error);
     res.status(500).json({
-      message: "Error al eliminar la bodega, el encargado sigue activo:",
+      message: "Error al eliminar la bodega, contiene productos",
     });
   }
 };

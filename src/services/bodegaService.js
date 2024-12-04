@@ -119,19 +119,14 @@ const obtenerProductosPorBodega = async (idBodega) => {
     const query = `
      SELECT 
         p.id_producto,
-        pr.empresa AS proveedor,
         b.nombres AS bodega,
         p.nombre,
         p.referencia,
         p.descripcion,
-        p.precio_compra,
         p.precio_venta,
-        p.cantidad,
-        p.estado
+        p.cantidad
       FROM 
         productos p
-      LEFT JOIN 
-        proveedores pr ON p.proveedor = pr.id_proveedor
       LEFT JOIN 
         bodegas b ON p.bodega = b.id_bodega
       WHERE

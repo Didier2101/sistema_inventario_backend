@@ -5,15 +5,12 @@ const pool = require("../database");
 const agregarProducto = async (producto) => {
   try {
     if (
-      !producto.proveedor ||
       !producto.bodega ||
       !producto.nombre ||
       !producto.referencia ||
       !producto.descripcion ||
-      !producto.precio_compra ||
       !producto.precio_venta ||
-      !producto.cantidad ||
-      !producto.estado
+      !producto.cantidad
     ) {
       throw new Error("Datos del producto incompletos");
     }
@@ -34,58 +31,53 @@ const agregarProducto = async (producto) => {
     }
     // Insertar datos del producto
     const insertarProductoQuery = `
-      INSERT INTO productos (proveedor, bodega, nombre, referencia, descripcion, precio_compra, precio_venta, cantidad, estado)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO productos ( bodega, nombre, referencia, descripcion, precio_venta, cantidad)
+      VALUES (?, ?, ?, ?, ?, ?)
     `;
     const values = [
-      producto.proveedor,
       producto.bodega,
       producto.nombre,
       producto.referencia,
       producto.descripcion,
-      producto.precio_compra,
       producto.precio_venta,
       producto.cantidad,
-      producto.estado ? 1 : 0, // Convertimos el booleano a 0 o 1 para almacenarlo en la base de datos
     ];
     await pool.query(insertarProductoQuery, values);
 
     await pool.query("COMMIT");
-
-    console.log("Producto agregado correctamente");
+    return { message: "Producto agregado correctamente" };
   } catch (error) {
     await pool.query("ROLLBACK");
-    console.error("Error al agregar el producto:", error);
+    // Error genérico si no existe un código de error personalizado
+    if (!error.code) {
+      error.code = "ERROR_DESCONOCIDO";
+      error.message = "Error al agregar el producto";
+    }
     throw error;
   }
 };
 
-// Función para obtener todos los productos con bodegas
+// Función para obtener todos los productos con bodegas services
 const obtenerTodosProductos = async () => {
   try {
     const query = `
       SELECT 
         p.id_producto,
-        pr.empresa AS proveedor,
-        b.nombres AS bodega,  -- Se añadió la coma faltante aquí
+        b.nombres AS bodega,
         p.nombre,
         p.referencia,
         p.descripcion,
-        p.precio_compra,
         p.precio_venta,
-        p.cantidad,
-        p.estado
+        p.cantidad
       FROM 
         productos p
-      LEFT JOIN 
-        proveedores pr ON p.proveedor = pr.id_proveedor
       LEFT JOIN 
         bodegas b ON p.bodega = b.id_bodega
     `;
     const [productos] = await pool.query(query);
     return productos;
   } catch (error) {
-    console.error("Error al obtener los productos:", error);
+    error.message = "Error al obtener los productos desde la base de datos";
     throw error;
   }
 };
@@ -99,17 +91,21 @@ const obtenerProductoPorId = async (idProducto) => {
       WHERE id_producto = ?
     `;
     const [productos] = await pool.query(obtenerProductoQuery, [idProducto]);
+
     if (productos.length === 0) {
-      throw new Error("Producto no encontrado");
-    } else {
-      return productos[0];
+      const error = new Error("Producto no encontrado");
+      error.code = "PRODUCTO_NO_ENCONTRADO"; // Código de error personalizado
+      throw error;
     }
+
+    return productos[0];
   } catch (error) {
-    console.error("Error al obtener el producto:", error);
+    error.message = "Error al obtener el producto desde la base de datos";
     throw error;
   }
 };
 
+// Función para actualizar un producto por su ID
 // Función para actualizar un producto por su ID
 const actualizarProducto = async (idProducto, nuevoProducto) => {
   try {
@@ -121,47 +117,53 @@ const actualizarProducto = async (idProducto, nuevoProducto) => {
     ]);
 
     if (existingReferencia.length > 0) {
-      throw {
-        code: "REFERENCIA_DUPLICADA",
-        message: "La referencia ingresada ya está registrada",
-      };
+      // Lanza un error con código personalizado si la referencia ya existe en otro producto
+      const error = new Error("La referencia ingresada ya está registrada");
+      error.code = "REFERENCIA_DUPLICADA";
+      throw error;
     }
-    // Verificar si la nueva referencia ya existe en otro producto
+
+    // Realiza la actualización del producto en la base de datos
     const query = `
       UPDATE productos
       SET 
-      proveedor = ?,
-      bodega = ?,
+        bodega = ?,
         nombre = ?,
         referencia = ?,
         descripcion = ?,
-        precio_compra = ?,
         precio_venta = ?,
-        cantidad = ?,
-        estado = ?
+        cantidad = ?
       WHERE id_producto = ?
     `;
     const values = [
-      nuevoProducto.proveedor,
       nuevoProducto.bodega,
       nuevoProducto.nombre,
       nuevoProducto.referencia,
       nuevoProducto.descripcion,
-      nuevoProducto.precio_compra,
       nuevoProducto.precio_venta,
       nuevoProducto.cantidad,
-      nuevoProducto.estado ? 1 : 0,
       idProducto,
     ];
-    await pool.query(query, values);
 
-    console.log("Producto actualizado correctamente");
+    const [result] = await pool.query(query, values);
+
+    if (result.affectedRows === 0) {
+      // Error si no se encuentra el producto a actualizar
+      const error = new Error("Producto no encontrado");
+      error.code = "PRODUCTO_NO_ENCONTRADO";
+      throw error;
+    }
+
+    // Retorna un mensaje de éxito para que el controlador lo use en la respuesta
+    return { message: "Producto actualizado correctamente" };
   } catch (error) {
-    console.error("Error al actualizar el producto:", error);
+    // Ajusta el mensaje de error y lo lanza para que el controlador lo maneje
+    error.message = error.message || "Error al actualizar el producto";
     throw error;
   }
 };
 
+// Función para eliminar un producto por su ID
 // Función para eliminar un producto por su ID
 const eliminarProducto = async (idProducto) => {
   try {
@@ -173,66 +175,74 @@ const eliminarProducto = async (idProducto) => {
       DELETE FROM productos
       WHERE id_producto = ?
     `;
-    await pool.query(eliminarProductoQuery, [idProducto]);
+    const [result] = await pool.query(eliminarProductoQuery, [idProducto]);
+
+    if (result.affectedRows === 0) {
+      // Si no se encuentra el producto, lanzar un error
+      const error = new Error("Producto no encontrado");
+      error.code = "PRODUCTO_NO_ENCONTRADO";
+      throw error;
+    }
 
     // Confirmar transacción
     await pool.query("COMMIT");
 
-    console.log("Producto eliminado correctamente de la base de datos");
+    // Retornar un mensaje de éxito para que el controlador lo maneje
+    return { message: "Producto eliminado correctamente" };
   } catch (error) {
     // Revertir la transacción en caso de error
     await pool.query("ROLLBACK");
 
-    console.error("Error al eliminar el producto de la base de datos:", error);
+    // Ajustar el mensaje de error y lanzarlo para que el controlador lo maneje
+    error.message = error.message || "Error al eliminar el producto";
     throw error;
   }
 };
 
-// Función para actualizar el estado de un producto por su ID en la base de datos
-const actualizarEstadoProducto = async (idProducto, estado) => {
+// Función para actualizar el stock de un producto (sumar o restar)
+const actualizarStockProducto = async (idProducto, cantidad, operacion) => {
   try {
-    const query = "UPDATE productos SET estado = ? WHERE id_producto = ?";
-    await pool.query(query, [estado, idProducto]);
-  } catch (error) {
-    throw new Error(
-      `Error al actualizar el estado del producto en la base de datos: ${error.message}`
-    );
-  }
-};
-
-// codigo para sumar cantidad a un producto
-const actualizarStockProducto = async (idProducto, nuevaCantidad) => {
-  try {
-    // Obtiene la cantidad actual del producto desde la base de datos
+    // Consulta la cantidad actual del producto
     const [productoActual] = await pool.query(
-      "SELECT * FROM productos WHERE id_producto = ?",
-      [idProducto] // Parámetro para la consulta SQL
+      "SELECT cantidad FROM productos WHERE id_producto = ?",
+      [idProducto]
     );
-    // Verifica si el producto existe en la base de datos
+
     if (productoActual.length === 0) {
       throw new Error("Producto no encontrado");
     }
 
-    // Obtiene la cantidad actual del producto
+    // Calcula la nueva cantidad según la operación
     const cantidadActual = productoActual[0].cantidad;
-    // Calcula la nueva cantidad sumando el nuevo stock al stock actual
-    const cantidadNueva = cantidadActual + nuevaCantidad;
+    let cantidadNueva;
 
-    // Actualiza la cantidad del producto en la base de datos
+    if (operacion === "sumar") {
+      cantidadNueva = cantidadActual + cantidad;
+    } else if (operacion === "restar") {
+      cantidadNueva = cantidadActual - cantidad;
+    } else {
+      throw new Error("Operación no válida");
+    }
+
+    // Verifica que la cantidad nueva no sea negativa
+    if (cantidadNueva < 0) {
+      throw new Error("No se puede reducir la cantidad por debajo de cero");
+    }
+
+    // Actualiza la cantidad en la base de datos
     const [resultado] = await pool.query(
       "UPDATE productos SET cantidad = ? WHERE id_producto = ?",
       [cantidadNueva, idProducto]
     );
 
-    // Verifica si se actualizó alguna fila en la base de datos
     if (resultado.affectedRows === 0) {
-      throw new Error("Producto no encontrado"); // Lanza un error si no se actualizó ninguna fila
+      throw new Error("Error al actualizar el producto");
     }
 
-    // Devuelve el resultado con el ID del producto y la nueva cantidad
+    // Devuelve el ID del producto y la nueva cantidad
     return { idProducto, cantidadNueva };
   } catch (error) {
-    throw new Error(`Error al insertar la nueva cantidad: ${error.message}`);
+    throw new Error(`Error al actualizar la cantidad: ${error.message}`);
   }
 };
 
@@ -242,6 +252,5 @@ module.exports = {
   eliminarProducto,
   obtenerProductoPorId,
   actualizarProducto,
-  actualizarEstadoProducto,
   actualizarStockProducto,
 };
