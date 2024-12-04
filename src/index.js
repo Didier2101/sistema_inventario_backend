@@ -13,7 +13,7 @@ const cargosRouter = require("./routes/cargoRouter");
 
 const corsOptions = {
   // origin: ["https://inventario-rogo-1.onrender.com"],
-  origin: ["http://localhost:5173"],
+  origin: ["sistema-inventario-frontend-dusky.vercel.app"],
   methods: ["GET", "POST", "PUT", "DELETE"], // Métodos permitidos
   allowedHeaders: ["Content-Type", "Authorization"], // Cabeceras permitidas
   credentials: true, // Si es necesario enviar cookies o encabezados de autorización
